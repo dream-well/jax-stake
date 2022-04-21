@@ -195,7 +195,6 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function set_unlocked_stake_amount_limit(uint max_amount) external onlyOwner runProtection {
-        require(max_amount <= _usdt_decimals(1000000), "Max amount <= 1,000,000 USD");
         max_unlocked_stake_amount = max_amount;
         emit Set_Max_Unlocked_Stake_Amount(max_amount);
     }
@@ -208,7 +207,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
     function set_unlocked_deposit_amount_limit(uint min_amount, uint max_amount) external onlyOwner runProtection {
         require(min_amount >= _usdt_decimals(1) && min_amount <= _usdt_decimals(100), "1 USD <= Min amount <= 100 USD");
-        require(max_amount <= _usdt_decimals(1000), "Max amount <= 1000 USD");
+        require(max_amount <= _usdt_decimals(10000), "Max amount <= 10,000 USD");
         min_unlocked_deposit_amount = min_amount;
         max_unlocked_deposit_amount = max_amount;
         emit Set_Unlocked_Deposit_Amount_Limit(min_amount, max_amount);
