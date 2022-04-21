@@ -121,11 +121,6 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
         emit Set_Collateral_Ratio(_collateral_ratio);
     }
 
-    function _check_collateral(uint collateral, uint stake_amount) internal view {
-        uint collateral_in_usdt = collateral * get_wjxn_price() * (10 ** usdt.decimals()) / 1e18;  
-        require(stake_amount <= collateral_in_usdt * 100 / collateral_ratio, "Lack of collateral");
-    }
-
     function get_wjxn_price() public view returns(uint) {
         uint dex_price = _get_wjxn_dex_price();
         if(dex_price < minimum_wjxn_price)
