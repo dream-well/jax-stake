@@ -184,7 +184,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function set_referral_ratio(uint ratio) external onlyOwner runProtection {
-        require(ratio >= 0.25 * 1e8 && ratio <= 1.25 * 1e8, "Referral ratio should be 0.25% ~ 1.25%");
+        require(ratio >= 0.25 * 1e6 && ratio <= 1.25 * 1e6, "Referral ratio should be 0.25% ~ 1.25%");
         referral_ratio = ratio;
         emit Set_Referral_Ratio(ratio);
     }
