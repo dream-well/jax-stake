@@ -103,10 +103,6 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
         _transferOwnership(msg.sender);
     }
 
-    function _usdt_to_discounted_wjxn_amount(uint usdt_amount) internal view returns (uint){
-        return usdt_amount * (10 ** (18 - usdt.decimals())) * (100 - wjxn_default_discount_ratio) / 100 / _get_wjxn_price();
-    }
-
     function set_stake_apy(uint plan, uint apy) external onlyOwner runProtection {
         if(plan == 0) {
             require(apy >= 1 && apy <= 8, "Invalid apy");
@@ -126,11 +122,11 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function _check_collateral(uint collateral, uint stake_amount) internal view {
-        uint collateral_in_usdt = collateral * _get_wjxn_price() * (10 ** usdt.decimals()) / 1e18;  
+        uint collateral_in_usdt = collateral * get_wjxn_price() * (10 ** usdt.decimals()) / 1e18;  
         require(stake_amount <= collateral_in_usdt * 100 / collateral_ratio, "Lack of collateral");
     }
 
-    function _get_wjxn_price() public view returns(uint) {
+    function get_wjxn_price() public view returns(uint) {
         uint dex_price = _get_wjxn_dex_price();
         if(dex_price < minimum_wjxn_price)
             return minimum_wjxn_price;
@@ -155,7 +151,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
 
     function set_minimum_wjxn_price(uint price) external onlyOwner runProtection {
-        require(price >= 15 * (10 ** usdt.decimals()) / 10, "Minimum wjxn price should be above 1.5 USD");
+        require(price >= 1.5 * 1e18, "Minimum wjxn price should be above 1.5 USD");
         minimum_wjxn_price = price;
         emit Set_Minimum_Wjxn_Price(price);
     }
@@ -193,7 +189,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function set_referral_ratio(uint ratio) external onlyOwner runProtection {
-        require(ratio >= 0.25 * 1e18 && ratio <= 1.25 * 1e18, "Referral ratio should be 0.25% ~ 1.25%");
+        require(ratio >= 0.25 * 1e8 && ratio <= 1.25 * 1e8, "Referral ratio should be 0.25% ~ 1.25%");
         referral_ratio = ratio;
         emit Set_Referral_Ratio(ratio);
     }

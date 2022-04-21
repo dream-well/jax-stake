@@ -29,19 +29,13 @@ interface IJaxStakeAdmin {
 
     function wjxn_default_discount_ratio() external view returns (uint);
 
-    function minimum_wjxn_price() external view returns (uint);
-
     function lock_plans(uint plan) external view returns(uint);
 
-    function unlocked_stake_amount() external view returns (uint);
     function max_unlocked_stake_amount() external view returns (uint);
-    function min_unlocked_stake_amount() external view returns (uint);
 
-    function locked_stake_amount() external view returns (uint);
     function max_locked_stake_amount() external view returns (uint);
-    function min_locked_stake_amount() external view returns (uint);
 
-    function _get_wjxn_price() external view returns(uint);
+    function get_wjxn_price() external view returns(uint);
     function is_deposit_freezed() external view returns(bool);
     function referrers(uint id) external view returns(address);
     function referrer_status(uint id) external view returns(bool);
@@ -114,8 +108,9 @@ contract JaxStake is Initializable, JaxProtection {
     function _stake_usdt(uint plan, uint amount, uint referral_id, bool is_restake) internal {
         require(plan <= 4, "Invalid plan");
         require(stakeAdmin.is_deposit_freezed() == false, "Staking is freezed");
+        IERC20 usdt = stakeAdmin.usdt();
         if(is_restake == false)
-            stakeAdmin.usdt().transferFrom(msg.sender, address(this), amount);
+            usdt.transferFrom(msg.sender, address(this), amount);
         uint collateral = stakeAdmin.wjxn().balanceOf(address(this));
         total_stake_amount += amount;
         _check_collateral(collateral, total_stake_amount);
@@ -141,7 +136,14 @@ contract JaxStake is Initializable, JaxProtection {
             stake.end_timestamp = block.timestamp + stakeAdmin.lock_plans(plan);
             if(stakeAdmin.referrer_status(referral_id) == true) {
                 stake.referral_id = referral_id;
-                stakeAdmin.usdt().transfer(stakeAdmin.referrers(referral_id), amount * stakeAdmin.referral_ratio() * plan / 1e8);
+                uint referral_amount = amount * stakeAdmin.referral_ratio() * plan / 1e8;
+                address referrer = stakeAdmin.referrers(referral_id);
+                if(usdt.balanceOf(address(this)) >= referral_amount) {
+                    usdt.transfer(referrer, referral_amount);
+                }
+                else {
+                    stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(referral_amount));
+                }
             }
         }
         stake.harvest_timestamp = stake.start_timestamp;
@@ -179,7 +181,7 @@ contract JaxStake is Initializable, JaxProtection {
         if(stakeAdmin.usdt().balanceOf(address(this)) >= pending_reward)
             stakeAdmin.usdt().transfer(msg.sender, pending_reward);
         else {
-            stakeAdmin.wjxn().transfer(msg.sender, _usdt_to_discounted_wjxn_amount(pending_reward));
+            stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(pending_reward));
         }
         stake.reward_released += pending_reward;
         stake.harvest_timestamp = block.timestamp;
@@ -201,7 +203,7 @@ contract JaxStake is Initializable, JaxProtection {
             if(stake.amount <= stakeAdmin.usdt().balanceOf(address(this)))
                 stakeAdmin.usdt().transfer(stake.owner, stake.amount);
             else 
-                stakeAdmin.wjxn().transfer(msg.sender, _usdt_to_discounted_wjxn_amount(stake.amount));
+                stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(stake.amount));
         }
         if(stake.plan == 0) {
             unlocked_stake_amount -= stake.amount;
@@ -220,12 +222,12 @@ contract JaxStake is Initializable, JaxProtection {
         _stake_usdt(stake.plan, stake.amount, stake.referral_id, true);
     }
 
-    function _usdt_to_discounted_wjxn_amount(uint usdt_amount) internal view returns (uint){
-        return usdt_amount * (10 ** (18 - stakeAdmin.usdt().decimals())) * (100 - stakeAdmin.wjxn_default_discount_ratio()) / 100 / stakeAdmin._get_wjxn_price();
+    function usdt_to_discounted_wjxn_amount(uint usdt_amount) public view returns (uint){
+        return usdt_amount * (10 ** (18 - stakeAdmin.usdt().decimals())) * 100 / (100 - stakeAdmin.wjxn_default_discount_ratio()) / stakeAdmin.get_wjxn_price();
     }
 
     function _check_collateral(uint collateral, uint stake_amount) internal view {
-        uint collateral_in_usdt = collateral * stakeAdmin._get_wjxn_price() * (10 ** stakeAdmin.usdt().decimals()) / 1e18;  
+        uint collateral_in_usdt = collateral * stakeAdmin.get_wjxn_price() * (10 ** stakeAdmin.usdt().decimals()) / 1e18;  
         require(stake_amount <= collateral_in_usdt * 100 / stakeAdmin.collateral_ratio(), "Lack of collateral");
     }
 
@@ -234,7 +236,7 @@ contract JaxStake is Initializable, JaxProtection {
     }
 
     function add_accountant(address account, address withdrawal_address, address withdrawal_token, uint withdrawal_limit) external onlyOwner {
-        require(accountant_to_ids[account] == 0, "Already exist");
+        require(accountant_to_ids[account] == 0, "Already exists");
         Accountant memory accountant;
         accountant.account = account;
         accountant.withdrawal_address = withdrawal_address;
