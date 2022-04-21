@@ -235,7 +235,7 @@ contract JaxStake is Initializable, JaxProtection {
         return user_stakes[user];
     }
 
-    function add_accountant(address account, address withdrawal_address, address withdrawal_token, uint withdrawal_limit) external onlyOwner {
+    function add_accountant(address account, address withdrawal_address, address withdrawal_token, uint withdrawal_limit) external onlyOwner runProtection {
         require(accountant_to_ids[account] == 0, "Already exists");
         Accountant memory accountant;
         accountant.account = account;
@@ -255,7 +255,7 @@ contract JaxStake is Initializable, JaxProtection {
         emit Set_Accountant_Withdrawal_Limit(id, limit);
     }
 
-    function withdraw_by_accountant(uint amount) external {
+    function withdraw_by_accountant(uint amount) external runProtection {
         uint id = accountant_to_ids[msg.sender];
         require(id > 0, "Not an accountant");
         Accountant storage accountant = accountants[id];
@@ -265,7 +265,7 @@ contract JaxStake is Initializable, JaxProtection {
         emit Withdraw_By_Accountant(id, accountant.withdrawal_token, accountant.withdrawal_address, amount);
     }
 
-    function withdrawByAdmin(address token, uint amount) external onlyOwner {
+    function withdrawByAdmin(address token, uint amount) external onlyOwner runProtection{
         if(token == address(stakeAdmin.wjxn())) {
             uint collateral = stakeAdmin.wjxn().balanceOf(address(this));
             require(collateral >= amount, "Out of balance");

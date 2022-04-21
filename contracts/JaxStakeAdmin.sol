@@ -87,7 +87,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
         wjxn_default_discount_ratio = 10; // 10%
 
-        minimum_wjxn_price = 1e18;
+        minimum_wjxn_price = 1.5 * 1e18;
 
         lock_plans = [0 days, 90 days, 180 days, 270 days, 360 days];
 
