@@ -77,7 +77,6 @@ contract JaxStake is Initializable, JaxProtection {
     mapping(address => uint) public accountant_to_ids;
 
     event Stake_USDT(uint stake_id, uint plan, uint amount, uint referral_id);
-    event Set_Stake_APY(uint plan, uint amount);
     event Harvest(uint stake_id, uint amount);
     event Unstake(uint stake_id);
     event Add_Accountant(uint id, address account, address withdrawal_address, address withdrawal_token, uint withdrawal_limit);

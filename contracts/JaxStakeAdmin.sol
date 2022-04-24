@@ -109,7 +109,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
             apy_unlocked_staking = apy;
         }
         else {
-            require(apy >= 12 && apy <= 24, "Invalid apy");
+            require(apy >= 12 && apy <= 36, "Invalid apy");
             apy_locked_staking = apy;
         }
         emit Set_Stake_APY(plan, apy);
@@ -195,6 +195,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function set_unlocked_stake_amount_limit(uint max_amount) external onlyOwner runProtection {
+        require(max_amount <= _usdt_decimals(1000000), "Max amount <= 1,000,000 USD");
         max_unlocked_stake_amount = max_amount;
         emit Set_Max_Unlocked_Stake_Amount(max_amount);
     }
