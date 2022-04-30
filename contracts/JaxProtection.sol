@@ -27,7 +27,7 @@ contract JaxProtection {
             emit Request_Update(msg.sig, msg.data);
             return false;
         }
-        require(protection.executed == false, "Already executed");
+        require(!protection.executed, "Already executed");
         require(block.timestamp >= uint(protection.request_timestamp) + 2 days, "Running is Locked");
         protection.executed = true;
         return true;

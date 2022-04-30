@@ -3,7 +3,8 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./interface/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "./interface/IPancakeRouter.sol";
 import "./JaxProtection.sol";
 
@@ -11,8 +12,8 @@ interface IJaxStakeAdmin {
 
     function owner() external view returns(address);
 
-    function wjxn() external view returns(IERC20);
-    function usdt() external view returns(IERC20);
+    function wjxn() external view returns(IERC20MetadataUpgradeable);
+    function usdt() external view returns(IERC20MetadataUpgradeable);
 
     function apy_unlocked_staking() external view returns (uint);
     function apy_locked_staking() external view returns (uint);
@@ -43,11 +44,15 @@ interface IJaxStakeAdmin {
 
 contract JaxStake is Initializable, JaxProtection {
     
+    using SafeERC20Upgradeable for IERC20MetadataUpgradeable;
+
     IJaxStakeAdmin public stakeAdmin;
 
     uint public total_stake_amount;
     uint public unlocked_stake_amount;
     uint public locked_stake_amount;
+
+    bool is_entered;
 
     struct Stake {
         uint amount;
@@ -93,23 +98,31 @@ contract JaxStake is Initializable, JaxProtection {
       require(stakeAdmin.owner() == msg.sender, "Caller is not the owner");
       _;
     }
+
+    modifier nonReentrant() {
+        require(!is_entered, "ReentrancyGuard: reentrant call");
+        is_entered = true;
+        _;
+        is_entered = false;
+    }
     
     function initialize(IJaxStakeAdmin _stakeAdmin) external initializer checkZeroAddress(address(_stakeAdmin)) {
         stakeAdmin = _stakeAdmin;
+        is_entered = false;
         Accountant memory accountant;
         accountants.push(accountant);
     }
 
-    function stake_usdt(uint plan, uint amount, uint referral_id) external {
+    function stake_usdt(uint plan, uint amount, uint referral_id) external nonReentrant {
         _stake_usdt(plan, amount, referral_id, false);    
     }
 
     function _stake_usdt(uint plan, uint amount, uint referral_id, bool is_restake) internal {
         require(plan <= 4, "Invalid plan");
-        require(stakeAdmin.is_deposit_freezed() == false, "Staking is freezed");
-        IERC20 usdt = stakeAdmin.usdt();
-        if(is_restake == false)
-            usdt.transferFrom(msg.sender, address(this), amount);
+        require(!stakeAdmin.is_deposit_freezed(), "Staking is freezed");
+        IERC20MetadataUpgradeable usdt = stakeAdmin.usdt();
+        if(!is_restake)
+            usdt.safeTransferFrom(msg.sender, address(this), amount);
         uint collateral = stakeAdmin.wjxn().balanceOf(address(this));
         total_stake_amount += amount;
         _check_collateral(collateral, total_stake_amount);
@@ -122,7 +135,7 @@ contract JaxStake is Initializable, JaxProtection {
             require(amount >= stakeAdmin.min_unlocked_deposit_amount() && amount <= stakeAdmin.max_unlocked_deposit_amount(), "Out of limit");
             unlocked_stake_amount += amount;
             require(unlocked_stake_amount <= stakeAdmin.max_unlocked_stake_amount(), "max unlocked stake amount");
-            require(is_user_unlocked_staking[msg.sender] == false, "Only one unlocked staking");
+            require(!is_user_unlocked_staking[msg.sender], "Only one unlocked staking");
             is_user_unlocked_staking[msg.sender] = true;
             stake.apy = stakeAdmin.apy_unlocked_staking();
             stake.end_timestamp = block.timestamp;
@@ -133,15 +146,15 @@ contract JaxStake is Initializable, JaxProtection {
             require(locked_stake_amount <= stakeAdmin.max_locked_stake_amount(), "max locked stake amount");
             stake.apy = stakeAdmin.apy_locked_staking();
             stake.end_timestamp = block.timestamp + stakeAdmin.lock_plans(plan);
-            if(stakeAdmin.referrer_status(referral_id) == true) {
+            if(stakeAdmin.referrer_status(referral_id)) {
                 stake.referral_id = referral_id;
                 uint referral_amount = amount * stakeAdmin.referral_ratio() * plan / 1e8;
                 address referrer = stakeAdmin.referrers(referral_id);
                 if(usdt.balanceOf(address(this)) >= referral_amount) {
-                    usdt.transfer(referrer, referral_amount);
+                    usdt.safeTransfer(referrer, referral_amount);
                 }
                 else {
-                    stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(referral_amount));
+                    stakeAdmin.wjxn().safeTransfer(msg.sender, usdt_to_discounted_wjxn_amount(referral_amount));
                 }
             }
         }
@@ -155,7 +168,7 @@ contract JaxStake is Initializable, JaxProtection {
     function get_pending_reward(uint stake_id) public view returns(uint) {
         Stake memory stake = stake_list[stake_id];
         uint past_period = 0;
-        if(stake.is_withdrawn == true) return 0;
+        if(stake.is_withdrawn) return 0;
         if(stake.plan > 0 && stake.harvest_timestamp >= stake.end_timestamp) 
             return 0;
         if(block.timestamp >= stake.end_timestamp && stake.plan > 0)
@@ -166,28 +179,28 @@ contract JaxStake is Initializable, JaxProtection {
         return reward - stake.reward_released;
     }
 
-    function harvest(uint stake_id) external {
+    function harvest(uint stake_id) external nonReentrant {
         require(_harvest(stake_id) > 0, "No pending reward");
     }
 
     function _harvest(uint stake_id) internal returns(uint pending_reward) {
         Stake storage stake = stake_list[stake_id];
         require(stake.owner == msg.sender, "Only staker");
-        require(stake.is_withdrawn == false, "Already withdrawn");
+        require(!stake.is_withdrawn, "Already withdrawn");
         pending_reward = get_pending_reward(stake_id);
         if(pending_reward == 0) 
             return 0;
         if(stakeAdmin.usdt().balanceOf(address(this)) >= pending_reward)
-            stakeAdmin.usdt().transfer(msg.sender, pending_reward);
+            stakeAdmin.usdt().safeTransfer(msg.sender, pending_reward);
         else {
-            stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(pending_reward));
+            stakeAdmin.wjxn().safeTransfer(msg.sender, usdt_to_discounted_wjxn_amount(pending_reward));
         }
         stake.reward_released += pending_reward;
         stake.harvest_timestamp = block.timestamp;
         emit Harvest(stake_id, pending_reward);
     }
 
-    function unstake(uint stake_id) external {
+    function unstake(uint stake_id) external nonReentrant {
         _unstake(stake_id, false);
     }
 
@@ -195,14 +208,14 @@ contract JaxStake is Initializable, JaxProtection {
         require(stake_id < stake_list.length, "Invalid stake id");
         Stake storage stake = stake_list[stake_id];
         require(stake.owner == msg.sender, "Only staker");
-        require(stake.is_withdrawn == false, "Already withdrawn");
+        require(!stake.is_withdrawn, "Already withdrawn");
         require(stake.end_timestamp <= block.timestamp, "Locked");
         _harvest(stake_id);
-        if(is_restake == false) {
+        if(!is_restake) {
             if(stake.amount <= stakeAdmin.usdt().balanceOf(address(this)))
-                stakeAdmin.usdt().transfer(stake.owner, stake.amount);
+                stakeAdmin.usdt().safeTransfer(stake.owner, stake.amount);
             else 
-                stakeAdmin.wjxn().transfer(msg.sender, usdt_to_discounted_wjxn_amount(stake.amount));
+                stakeAdmin.wjxn().safeTransfer(msg.sender, usdt_to_discounted_wjxn_amount(stake.amount));
         }
         if(stake.plan == 0) {
             unlocked_stake_amount -= stake.amount;
@@ -215,7 +228,7 @@ contract JaxStake is Initializable, JaxProtection {
         emit Unstake(stake_id);
     }
 
-    function restake(uint stake_id) external {
+    function restake(uint stake_id) external nonReentrant {
         Stake memory stake = stake_list[stake_id];
         _unstake(stake_id, true);
         _stake_usdt(stake.plan, stake.amount, stake.referral_id, true);
@@ -254,23 +267,23 @@ contract JaxStake is Initializable, JaxProtection {
         emit Set_Accountant_Withdrawal_Limit(id, limit);
     }
 
-    function withdraw_by_accountant(uint amount) external runProtection {
+    function withdraw_by_accountant(uint amount) external nonReentrant runProtection {
         uint id = accountant_to_ids[msg.sender];
         require(id > 0, "Not an accountant");
         Accountant storage accountant = accountants[id];
         require(accountant.withdrawal_limit >= amount, "Out of withdrawal limit");
-        IERC20(accountant.withdrawal_token).transfer(accountant.withdrawal_address, amount);
+        IERC20MetadataUpgradeable(accountant.withdrawal_token).safeTransfer(accountant.withdrawal_address, amount);
         accountant.withdrawal_limit -= amount;
         emit Withdraw_By_Accountant(id, accountant.withdrawal_token, accountant.withdrawal_address, amount);
     }
 
-    function withdrawByAdmin(address token, uint amount) external onlyOwner runProtection{
+    function withdrawByAdmin(address token, uint amount) external onlyOwner nonReentrant runProtection{
         if(token == address(stakeAdmin.wjxn())) {
             uint collateral = stakeAdmin.wjxn().balanceOf(address(this));
             require(collateral >= amount, "Out of balance");
             _check_collateral(collateral - amount, total_stake_amount);
         }
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20MetadataUpgradeable(token).safeTransfer(msg.sender, amount);
         emit Withdraw_By_Admin(token, amount);
     }  
 

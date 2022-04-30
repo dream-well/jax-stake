@@ -4,8 +4,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./JaxOwnable.sol";
-// import "./JaxProtection.sol";
-import "./interface/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface UBI {
     function deposit_reward(uint amount) external;
@@ -13,10 +12,14 @@ interface UBI {
 
 contract UbiDonation is Initializable, JaxOwnable {
         
+    using SafeERC20 for IERC20;
+
     IERC20 public wjax;
     uint public ubi_admin_fee;
 
     UBI ubi;
+
+    bool is_entered;
 
     address[] ubi_admins;
     mapping(uint => bool) ubi_admin_status;
@@ -27,25 +30,33 @@ contract UbiDonation is Initializable, JaxOwnable {
     event Set_Ubi_Admin_Fee(uint ubi_admin_fee);
     event Add_Ubi_Admins(address[] ubi_admins);
     event Delete_Ubi_Admins(uint[] ubi_admin_ids);
-    event Withdraw_By_Admin(address token, uint amount);
+    event Withdraw_By_Owner(address token, uint amount);
 
     modifier checkZeroAddress(address account) {
         require(account != address(0x0), "Only non-zero address");
         _;
     }
 
+    modifier nonReentrant() {
+        require(!is_entered, "ReentrancyGuard: reentrant call");
+        is_entered = true;
+        _;
+        is_entered = false;
+    }
+
     function initialize(IERC20 _wjax, UBI _ubi) external initializer checkZeroAddress(address(_wjax)) checkZeroAddress(address(_ubi)) {
         wjax = _wjax;
         ubi = _ubi;
         ubi_admin_fee = 5; // 5%
-        wjax.approve(address(ubi), type(uint).max);
+        is_entered = false;
+        require(wjax.approve(address(ubi), type(uint).max), "Wjax approvement failed");
         _transferOwnership(msg.sender);
     }
 
-    function donate(uint amount, uint ubi_admin_id) external {
-        wjax.transferFrom(msg.sender, address(this), amount);
+    function donate(uint amount, uint ubi_admin_id) external nonReentrant {
+        wjax.safeTransferFrom(msg.sender, address(this), amount);
         if(ubi_admin_status[ubi_admin_id])
-            wjax.transfer(ubi_admins[ubi_admin_id], amount * ubi_admin_fee / 100);
+            wjax.safeTransfer(ubi_admins[ubi_admin_id], amount * ubi_admin_fee / 100);
         emit Donate(amount, ubi_admin_id);
     }
 
@@ -95,12 +106,12 @@ contract UbiDonation is Initializable, JaxOwnable {
         return ubi_admins;
     }
 
-    function withdrawByAdmin(address token, uint amount) external onlyOwner {
-        IERC20(token).transfer(msg.sender, amount);
-        emit Withdraw_By_Admin(token, amount);
+    function withdrawByOwner(address token, uint amount) external onlyOwner nonReentrant {
+        IERC20(token).safeTransfer(msg.sender, amount);
+        emit Withdraw_By_Owner(token, amount);
     }   
 
-    function deposit_UBI() external {
+    function deposit_UBI() external nonReentrant {
         uint wjax_balance = wjax.balanceOf(address(this));
         require(wjax_balance > 0, "Nothing to deposit");
         ubi.deposit_reward(wjax_balance);
