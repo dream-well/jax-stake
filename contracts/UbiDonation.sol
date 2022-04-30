@@ -3,6 +3,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./JaxOwnable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -10,7 +11,7 @@ interface UBI {
     function deposit_reward(uint amount) external;
 }
 
-contract UbiDonation is Initializable, JaxOwnable {
+contract UbiDonation is Initializable, JaxOwnable, ReentrancyGuardUpgradeable {
         
     using SafeERC20 for IERC20;
 
@@ -18,8 +19,6 @@ contract UbiDonation is Initializable, JaxOwnable {
     uint public ubi_admin_fee;
 
     UBI ubi;
-
-    bool is_entered;
 
     address[] ubi_admins;
     mapping(uint => bool) ubi_admin_status;
@@ -37,18 +36,11 @@ contract UbiDonation is Initializable, JaxOwnable {
         _;
     }
 
-    modifier nonReentrant() {
-        require(!is_entered, "ReentrancyGuard: reentrant call");
-        is_entered = true;
-        _;
-        is_entered = false;
-    }
-
     function initialize(IERC20 _wjax, UBI _ubi) external initializer checkZeroAddress(address(_wjax)) checkZeroAddress(address(_ubi)) {
+        __ReentrancyGuard_init();
         wjax = _wjax;
         ubi = _ubi;
         ubi_admin_fee = 5; // 5%
-        is_entered = false;
         require(wjax.approve(address(ubi), type(uint).max), "Wjax approvement failed");
         _transferOwnership(msg.sender);
     }

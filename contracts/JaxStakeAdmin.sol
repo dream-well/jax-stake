@@ -5,7 +5,7 @@ pragma solidity 0.8.11;
 import "./JaxOwnable.sol";
 import "./JaxProtection.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "./interface/IERC20.sol";
 import "./interface/IPancakeRouter.sol";
 
 contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
@@ -89,7 +89,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
         minimum_wjxn_price = 1.5 * 1e18;
 
-        lock_plans = [0 minutes, 90 minutes, 180 minutes, 270 minutes, 360 minutes];
+        lock_plans = [0 days, 90 days, 180 days, 270 days, 360 days];
 
         max_unlocked_stake_amount = 1e6 * 1e6; //  1M USDT
 

@@ -5,6 +5,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./interface/IPancakeRouter.sol";
 import "./JaxProtection.sol";
 
@@ -42,7 +43,7 @@ interface IJaxStakeAdmin {
     function referrer_status(uint id) external view returns(bool);
 }
 
-contract JaxStake is Initializable, JaxProtection {
+contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
     
     using SafeERC20Upgradeable for IERC20MetadataUpgradeable;
 
@@ -52,7 +53,6 @@ contract JaxStake is Initializable, JaxProtection {
     uint public unlocked_stake_amount;
     uint public locked_stake_amount;
 
-    bool is_entered;
 
     struct Stake {
         uint amount;
@@ -99,16 +99,9 @@ contract JaxStake is Initializable, JaxProtection {
       _;
     }
 
-    modifier nonReentrant() {
-        require(!is_entered, "ReentrancyGuard: reentrant call");
-        is_entered = true;
-        _;
-        is_entered = false;
-    }
-    
     function initialize(IJaxStakeAdmin _stakeAdmin) external initializer checkZeroAddress(address(_stakeAdmin)) {
+        __ReentrancyGuard_init();
         stakeAdmin = _stakeAdmin;
-        is_entered = false;
         Accountant memory accountant;
         accountants.push(accountant);
     }
