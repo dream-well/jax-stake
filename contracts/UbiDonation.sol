@@ -5,7 +5,8 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./JaxOwnable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
 interface UBI {
     function deposit_reward(uint amount) external;
@@ -13,9 +14,9 @@ interface UBI {
 
 contract UbiDonation is Initializable, JaxOwnable, ReentrancyGuardUpgradeable {
         
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20MetadataUpgradeable;
 
-    IERC20 public wjax;
+    IERC20MetadataUpgradeable public wjax;
     uint public ubi_admin_fee;
 
     UBI ubi;
@@ -36,7 +37,7 @@ contract UbiDonation is Initializable, JaxOwnable, ReentrancyGuardUpgradeable {
         _;
     }
 
-    function initialize(IERC20 _wjax, UBI _ubi) external initializer checkZeroAddress(address(_wjax)) checkZeroAddress(address(_ubi)) {
+    function initialize(IERC20MetadataUpgradeable _wjax, UBI _ubi) external initializer checkZeroAddress(address(_wjax)) checkZeroAddress(address(_ubi)) {
         __ReentrancyGuard_init();
         wjax = _wjax;
         ubi = _ubi;
@@ -99,7 +100,7 @@ contract UbiDonation is Initializable, JaxOwnable, ReentrancyGuardUpgradeable {
     }
 
     function withdrawByOwner(address token, uint amount) external onlyOwner nonReentrant {
-        IERC20(token).safeTransfer(msg.sender, amount);
+        IERC20MetadataUpgradeable(token).safeTransfer(msg.sender, amount);
         emit Withdraw_By_Owner(token, amount);
     }   
 
