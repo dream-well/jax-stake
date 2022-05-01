@@ -16,9 +16,6 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     JaxProtection jaxProtection;
     IPancakeRouter01 router;
 
-    uint public apy_unlocked_staking;
-    uint public apy_locked_staking;
-    
     uint public min_unlocked_deposit_amount;
     uint public max_unlocked_deposit_amount;
 
@@ -34,6 +31,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     uint public minimum_wjxn_price; // 1e18
 
     uint[] public lock_plans;
+    uint[] public apys;
 
     uint public max_unlocked_stake_amount;
 
@@ -72,8 +70,6 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
         router = _router;
 
-        apy_unlocked_staking = 8; // 8%
-        apy_locked_staking = 24; // 24%
         
         min_unlocked_deposit_amount = 1 * 1e6;  // 1 USDT
         max_unlocked_deposit_amount = 1000 * 1e6; // 1000 USDT
@@ -90,6 +86,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
         minimum_wjxn_price = 1.5 * 1e18;
 
         lock_plans = [0 days, 90 days, 180 days, 270 days, 360 days];
+        apys = [8, 24, 24, 24];
 
         max_unlocked_stake_amount = 1e6 * 1e6; //  1M USDT
 
@@ -105,12 +102,11 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     function set_stake_apy(uint plan, uint apy) external onlyOwner runProtection {
         if(plan == 0) {
             require(apy >= 1 && apy <= 8, "Invalid apy");
-            apy_unlocked_staking = apy;
         }
         else {
             require(apy >= 12 && apy <= 36, "Invalid apy");
-            apy_locked_staking = apy;
         }
+        apys[plan] = apy;
         emit Set_Stake_APY(plan, apy);
     }
 

@@ -16,8 +16,7 @@ interface IJaxStakeAdmin {
     function wjxn() external view returns(IERC20MetadataUpgradeable);
     function usdt() external view returns(IERC20MetadataUpgradeable);
 
-    function apy_unlocked_staking() external view returns (uint);
-    function apy_locked_staking() external view returns (uint);
+    function apys(uint plan) external view returns (uint);
     
     function min_unlocked_deposit_amount() external view returns (uint);
     function max_unlocked_deposit_amount() external view returns (uint);
@@ -122,6 +121,7 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         Stake memory stake;
         stake.amount = amount;
         stake.plan = plan;
+        stake.apy = stakeAdmin.apys(plan);
         stake.owner = msg.sender;
         stake.start_timestamp = block.timestamp;
         if(plan == 0){ // Unlocked staking
@@ -130,14 +130,12 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
             require(unlocked_stake_amount <= stakeAdmin.max_unlocked_stake_amount(), "max unlocked stake amount");
             require(!is_user_unlocked_staking[msg.sender], "Only one unlocked staking");
             is_user_unlocked_staking[msg.sender] = true;
-            stake.apy = stakeAdmin.apy_unlocked_staking();
             stake.end_timestamp = block.timestamp;
         }
         else { // Locked Staking
             require(amount >= stakeAdmin.min_locked_deposit_amount() && amount <= stakeAdmin.max_locked_deposit_amount(), "Out of limit");
             locked_stake_amount += amount;
             require(locked_stake_amount <= stakeAdmin.max_locked_stake_amount(), "max locked stake amount");
-            stake.apy = stakeAdmin.apy_locked_staking();
             stake.end_timestamp = block.timestamp + stakeAdmin.lock_plans(plan);
             if(stakeAdmin.referrer_status(referral_id)) {
                 stake.referral_id = referral_id;
