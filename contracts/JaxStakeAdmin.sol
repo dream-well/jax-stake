@@ -101,7 +101,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
     function set_stake_apy(uint plan, uint apy) external onlyOwner runProtection {
         if(plan == 0) {
-            require(apy >= 1 && apy <= 8, "Invalid apy");
+            require(apy >= 1 && apy <= 24, "Invalid apy");
         }
         else {
             require(apy >= 12 && apy <= 36, "Invalid apy");
