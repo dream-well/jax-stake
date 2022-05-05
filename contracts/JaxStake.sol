@@ -124,19 +124,18 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         stake.apy = stakeAdmin.apys(plan);
         stake.owner = msg.sender;
         stake.start_timestamp = block.timestamp;
+        stake.end_timestamp = block.timestamp + stakeAdmin.lock_plans(plan);
         if(plan == 0){ // Unlocked staking
             require(amount >= stakeAdmin.min_unlocked_deposit_amount() && amount <= stakeAdmin.max_unlocked_deposit_amount(), "Out of limit");
             unlocked_stake_amount += amount;
             require(unlocked_stake_amount <= stakeAdmin.max_unlocked_stake_amount(), "max unlocked stake amount");
             require(!is_user_unlocked_staking[msg.sender], "Only one unlocked staking");
             is_user_unlocked_staking[msg.sender] = true;
-            stake.end_timestamp = block.timestamp;
         }
         else { // Locked Staking
             require(amount >= stakeAdmin.min_locked_deposit_amount() && amount <= stakeAdmin.max_locked_deposit_amount(), "Out of limit");
             locked_stake_amount += amount;
             require(locked_stake_amount <= stakeAdmin.max_locked_stake_amount(), "max locked stake amount");
-            stake.end_timestamp = block.timestamp + stakeAdmin.lock_plans(plan);
             if(stakeAdmin.referrer_status(referral_id)) {
                 stake.referral_id = referral_id;
                 uint referral_amount = amount * stakeAdmin.referral_ratio() * plan / 1e8;
@@ -160,9 +159,9 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         Stake memory stake = stake_list[stake_id];
         uint past_period = 0;
         if(stake.is_withdrawn) return 0;
-        if(stake.plan > 0 && stake.harvest_timestamp >= stake.end_timestamp) 
+        if(stake.harvest_timestamp >= stake.end_timestamp) 
             return 0;
-        if(block.timestamp >= stake.end_timestamp && stake.plan > 0)
+        if(block.timestamp >= stake.end_timestamp)
             past_period = stake.end_timestamp - stake.start_timestamp;
         else
             past_period = block.timestamp - stake.start_timestamp;

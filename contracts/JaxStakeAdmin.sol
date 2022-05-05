@@ -85,7 +85,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
         minimum_wjxn_price = 1.5 * 1e18;
 
-        lock_plans = [0 days, 90 days, 180 days, 270 days, 360 days];
+        lock_plans = [365 days, 90 days, 180 days, 270 days, 360 days];
         apys = [20, 24, 28, 32, 36];
 
         max_unlocked_stake_amount = 1e6 * 1e6; //  1M USDT
