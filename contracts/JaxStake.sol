@@ -60,6 +60,7 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         uint start_timestamp;
         uint harvest_timestamp;
         uint end_timestamp;
+        uint unstake_timestamp;
         uint referral_id;
         address owner;
         uint plan;
@@ -199,7 +200,7 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         Stake storage stake = stake_list[stake_id];
         require(stake.owner == msg.sender, "Only staker");
         require(!stake.is_withdrawn, "Already withdrawn");
-        require(stake.end_timestamp <= block.timestamp, "Locked");
+        require(stake.plan == 0 || stake.end_timestamp <= block.timestamp, "Locked");
         _harvest(stake_id);
         if(!is_restake) {
             if(stake.amount <= stakeAdmin.usdt().balanceOf(address(this)))
@@ -214,6 +215,7 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
         else
             locked_stake_amount -= stake.amount;
         stake.is_withdrawn = true;
+        stake.unstake_timestamp = block.timestamp;
         total_stake_amount -= stake.amount;
         emit Unstake(stake_id);
     }
