@@ -73,10 +73,10 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
         uint decimals = 10 ** usdt.decimals();
 
         min_unlocked_deposit_amount = 1 * decimals;  // 1 USDT
-        max_unlocked_deposit_amount = 1000 * decimals; // 1000 USDT
+        max_unlocked_deposit_amount = 1000 * decimals; // 1K USDT
 
-        min_locked_deposit_amount = 1000 * decimals; // 1000 USDT
-        max_locked_deposit_amount = 1e6 * decimals; // 1000,000 USDT
+        min_locked_deposit_amount = 100 * decimals; // 100 USDT
+        max_locked_deposit_amount = 1e6 * decimals; // 1M USDT
 
         collateral_ratio = 150; // 150%
 
@@ -196,14 +196,14 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
     }
 
     function set_locked_stake_amount_limit(uint max_amount) external onlyOwner runProtection {
-        require(max_amount >= _usdt_decimals(1e6), "Max amount >= 1,000,000 USD");
+        require(max_amount >= _usdt_decimals(1e6), "Max amount >= 1M USD");
         max_locked_stake_amount = max_amount;
         emit Set_Max_Locked_Stake_Amount(max_amount);
     }
 
     function set_unlocked_deposit_amount_limit(uint min_amount, uint max_amount) external onlyOwner runProtection {
         require(min_amount >= _usdt_decimals(1) && min_amount <= _usdt_decimals(100), "1 USD <= Min amount <= 100 USD");
-        require(max_amount <= _usdt_decimals(1e3), "Max amount <= 1000 USD");
+        require(max_amount <= _usdt_decimals(1e4), "Max amount <= 10K USD");
         min_unlocked_deposit_amount = min_amount;
         max_unlocked_deposit_amount = max_amount;
         emit Set_Unlocked_Deposit_Amount_Limit(min_amount, max_amount);
@@ -211,7 +211,7 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
     function set_locked_deposit_amount_limit(uint min_amount, uint max_amount) external onlyOwner runProtection {
         require(min_amount >= _usdt_decimals(100), "Min amount >= 100 USD");
-        require(max_amount >= _usdt_decimals(1e4), "Max amount >= 10,000 USD");
+        require(max_amount >= _usdt_decimals(1e4), "Max amount >= 10K USD");
         min_locked_deposit_amount = min_amount;
         max_locked_deposit_amount = max_amount;
         emit Set_Locked_Deposit_Amount_Limit(min_amount, max_amount);

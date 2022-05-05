@@ -231,8 +231,8 @@ contract JaxStake is Initializable, JaxProtection, ReentrancyGuardUpgradeable {
     }
 
     function _check_collateral(uint collateral, uint stake_amount) internal view {
-        uint collateral_in_usdt = collateral * stakeAdmin.get_wjxn_price() * (10 ** stakeAdmin.usdt().decimals()) / 1e18;  
-        require(stake_amount <= collateral_in_usdt * 100 / stakeAdmin.collateral_ratio(), "Lack of collateral");
+        uint collateral_in_usdt = collateral * stakeAdmin.get_wjxn_price() * (10 ** stakeAdmin.usdt().decimals()) * 100 / (stakeAdmin.collateral_ratio() * 1e18);  
+        require(stake_amount <= collateral_in_usdt, "Lack of collateral");
     }
 
     function get_user_stakes(address user) external view returns(uint[] memory) {
