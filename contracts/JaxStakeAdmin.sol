@@ -70,12 +70,13 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
 
         router = _router;
 
-        
-        min_unlocked_deposit_amount = 1 * 1e6;  // 1 USDT
-        max_unlocked_deposit_amount = 1000 * 1e6; // 1000 USDT
+        uint decimals = 10 ** usdt.decimals();
 
-        min_locked_deposit_amount = 1000 * 1e6; // 1000 USDT
-        max_locked_deposit_amount = 1e6 * 1e6; // 1000,000 USDT
+        min_unlocked_deposit_amount = 1 * decimals;  // 1 USDT
+        max_unlocked_deposit_amount = 1000 * decimals; // 1000 USDT
+
+        min_locked_deposit_amount = 1000 * decimals; // 1000 USDT
+        max_locked_deposit_amount = 1e6 * decimals; // 1000,000 USDT
 
         collateral_ratio = 150; // 150%
 
@@ -88,9 +89,9 @@ contract JaxStakeAdmin is JaxOwnable, Initializable, JaxProtection {
         lock_plans = [360 days, 90 days, 180 days, 270 days, 360 days];
         apys = [20, 24, 28, 32, 36];
 
-        max_unlocked_stake_amount = 1e6 * 1e6; //  1M USDT
+        max_unlocked_stake_amount = 1e6 * decimals; //  1M USDT
 
-        max_locked_stake_amount = 1e7 * 1e6; // 10M USDT
+        max_locked_stake_amount = 1e7 * decimals; // 10M USDT
 
         is_deposit_freezed = false;
 
